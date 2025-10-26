@@ -11,9 +11,36 @@ from ultralytics.engine.validator import BaseValidator
 from ultralytics.utils import LOGGER, ops
 from ultralytics.utils.checks import check_requirements
 from ultralytics.utils.metrics import ConfusionMatrix, DetMetrics, box_iou
-from ultralytics.utils.plotting import output_to_target, plot_images
+from ultralytics.utils.plotting import plot_images
 
+import torch
+# ...existing imports...
 
+def output_to_target(output, max_det=300):
+    """
+    Converts model output to target format for plotting.
+    Args:
+        output (list): List of model outputs per image.
+        max_det (int): Maximum number of detections per image.
+    Returns:
+        tuple: batch_idx, cls, bboxes
+    """
+    batch_idx, cls, bboxes = [], [], []
+    for i, o in enumerate(output):
+        if o is not None and len(o):
+            o = o[:max_det]
+            batch_idx.append(torch.full((len(o),), i, dtype=torch.int64, device=o.device))
+            cls.append(o[:, 5])
+            bboxes.append(o[:, :4])
+    if len(batch_idx):
+        batch_idx = torch.cat(batch_idx)
+        cls = torch.cat(cls)
+        bboxes = torch.cat(bboxes)
+    else:
+        batch_idx = torch.tensor([])
+        cls = torch.tensor([])
+        bboxes = torch.tensor([])
+    return batch_idx, cls, bboxes
 class DetectionValidator(BaseValidator):
     """
     A class extending the BaseValidator class for validation based on a detection model.
